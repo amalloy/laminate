@@ -1,5 +1,6 @@
 (ns flatland.laminate
-  (:require [lamina.time :as t]
+  (:require [flatland.useful.utils :refer [returning]]
+            [lamina.time :as t]
             [lamina.core :as lamina :refer [channel enqueue receive-all enqueue-and-close]]
             [lamina.core.operators :as op]
             [lamina.query.operators :as q]
@@ -70,10 +71,9 @@
        :emitter (fn []
                   (dosync
                    (when (and @expiry (<= @expiry (now)))
-                     (let [ret [@queued]]
+                     (returning [@queued]
                        (ref-set expiry nil)
-                       (ref-set queued [])
-                       ret))))
+                       (ref-set queued [])))))
        :period period
        :task-queue task-queue}))))
 
