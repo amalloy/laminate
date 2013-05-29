@@ -1,13 +1,16 @@
 # laminate
 
-A Clojure library designed to ... well, that part is up to you.
+Some custom operators for the lamina query-streams language.
 
 ## Usage
 
-FIXME
+Just require flatland.laminate, and that will modify lamina's query processor to enable the laminate operators.
 
-## License
+Currently included operators:
 
-Copyright © 2013 FIXME
-
-Distributed under the Eclipse Public License, the same as Clojure.
+- within-window
+- after
+- contains
+- min
+- max
+- mean
