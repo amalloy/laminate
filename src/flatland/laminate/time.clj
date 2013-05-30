@@ -10,7 +10,11 @@
   (defn subtract-day [ms]
     (- ms ms-per-day)))
 
-(defn align-to [i alignment]
-  (* alignment
-     (quot (+ i (dec alignment)) ;; round *up* to nearest [alignment]
-           alignment)))
+(defn align-to
+  ([i alignment]
+     (align-to i alignment 0))
+  ([i alignment tz-offset]
+     (-> (* alignment
+            (quot (+ i tz-offset (dec alignment)) ;; round *up* to nearest [alignment]
+                  alignment))
+         (- tz-offset))))
