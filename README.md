@@ -1,6 +1,6 @@
 # laminate
 
-Some custom operators for the lamina query-streams language.
+Some custom operators for the [lamina query language](https://github.com/ztellman/lamina/wiki/Queries).
 
 ## Usage
 
