@@ -137,3 +137,50 @@
                                           {:count (inc count) :sum (+ sum y)}))
                               (fn [{:keys [count sum]}]
                                 (/ sum count))))
+
+(letfn [(mapper [f]
+          (fn [{:keys [options]} ch]
+            (let [arg (get options 0)]
+              (lamina/map* #(f arg %) ch))))]
+  (def-query-operator scale
+    :periodic? false
+    :distribute? true
+    :transform (mapper *))
+  (def-query-operator add
+    :periodic? false
+    :distribute? true
+    :transform (mapper +))
+  (def-query-operator format
+    :periodic? false
+    :distribute? true
+    :transform (mapper format)))
+
+(def-query-operator map
+  :periodic? false
+  :distribute? true
+  :transform (fn [{:keys [options]} ch]
+               (let [f (q/getter (get options 0))]
+                 (lamina/map* (partial map f) ch))))
+
+(def-query-operator meta
+  :periodic? false
+  :distribute? true
+  :transform (fn [options ch]
+               (lamina/map* meta ch)))
+
+(def-query-operator top
+  :periodic? false
+  :distribute? false
+  :transform (fn [{:keys [options] :as x} ch]
+               (let [n (or (get options 0)
+                           (throw (IllegalArgumentException.
+                                   "`top` operator needs numeric first argument")))
+                     f (if-let [operator (some options [:by 1])]
+                         (q/getter operator)
+                         identity)]
+                 (->> ch
+                      (lamina/map* (fn [m]
+                                     (into {}
+                                           (take n
+                                                 (sort-by (comp f val)
+                                                          m)))))))))
