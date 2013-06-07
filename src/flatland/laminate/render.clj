@@ -31,11 +31,12 @@
     (keyed [offset from until period])))
 
 (defn points [targets offset query-opts]
-  (for [target targets]
-    {:target target
-     :datapoints (for [{:keys [timestamp value]}
-                       ,,(val (first (query/query-seqs
-                                      {(str "&" target) nil} query-opts)))]
+  (for [[target datapoints]
+        ,,(query/query-seqs (zipmap (map (partial str "&") targets)
+                                    (repeat nil))
+                            query-opts)]
+    {:target (subs target 1)
+     :datapoints (for [{:keys [timestamp value]} datapoints]
                    [value (-> timestamp ;; render API expects [value time] tuples
                               (- offset)
                               (time/ms->s))])}))
