@@ -17,17 +17,22 @@
 
 (defn parse-render-opts [{:keys [now timezone from until shift period align]}]
   (let [offset (parse-interval shift 0)
-        align (parse-interval align 1)
         timezone (parse-interval timezone 0)
         period (parse-interval period nil)
         now (+ offset now)
+        [align post-offset] (case align
+                              (nil "") [1 0]
+                              ("true" "end") [period 0]
+                              ("start") [period period]
+                              [(parse-interval align 1) 0])
         [from until] (for [[timespec default] [[from (time/subtract-day now)]
                                                [until now]]]
                        (time/ms->s
                         (-> (if (seq timespec)
                               (+ now (parse-interval timespec))
                               default)
-                            (time/align-to align timezone))))]
+                            (time/align-to align timezone))))
+        offset (+ offset post-offset)]
     (keyed [offset from until period])))
 
 (defn points [targets offset query-opts]
