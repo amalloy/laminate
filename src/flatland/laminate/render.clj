@@ -21,7 +21,7 @@
         period (parse-interval period nil)
         now (+ offset now)
         [align post-offset] (case align
-                              (nil "") [1 0]
+                              (nil "" "false") [1 0]
                               ("true" "end") [period 0]
                               ("start") [period period]
                               [(parse-interval align 1) 0])
