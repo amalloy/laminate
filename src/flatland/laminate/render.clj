@@ -15,8 +15,11 @@
        (parse-interval s)
        default)))
 
-(defn parse-render-opts [{:keys [now timezone from until shift period align]}]
-  (let [offset (parse-interval shift 0)
+(defn parse-render-opts [{:keys [target now timezone from until shift period align]}]
+  (let [targets (if (coll? target)   ; if there's only one target it's a string, but if multiple are
+                  target             ; specified then compojure will make a list of them
+                  [target])
+        offset (parse-interval shift 0)
         timezone (parse-interval timezone 0)
         period (parse-interval period nil)
         now (+ offset now)
