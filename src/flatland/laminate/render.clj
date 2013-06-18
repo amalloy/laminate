@@ -36,7 +36,7 @@
                               default)
                             (time/align-to align timezone))))
         offset (+ offset post-offset)]
-    (keyed [offset from until period])))
+    (keyed [targets offset from until period])))
 
 (defn points [targets offset query-opts]
   (for [[target datapoints]
