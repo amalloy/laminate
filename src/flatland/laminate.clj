@@ -2,6 +2,7 @@
   (:require [flatland.useful.utils :refer [returning]]
             [lamina.time :as t]
             [lamina.core :as lamina :refer [channel enqueue receive-all enqueue-and-close]]
+            [lamina.connections :as connection]
             [lamina.core.operators :as op]
             [lamina.query.operators :as q]
             [lamina.query.core :refer [def-query-operator def-query-comparator query-comparator]]))
@@ -184,3 +185,16 @@
                                            (take n
                                                  (sort-by (comp f val)
                                                           m)))))))))
+
+(defn persistent-stream
+  "Given a way to connect a channel to a server, and a \"sink\" channel to read from, creates an
+  automatically-reconnecting channel to the server, and siphons all messages from the sink to the
+  server. Returns a function which will close the persistent stream. All messages from the server
+  are ignored: this is intended to be a one-way, fire-and-forget stream."
+  [sink channel-fn]
+  (let [server (connection/persistent-connection channel-fn
+                                                 {:on-connected (fn [ch]
+                                                                  (lamina/ground ch)
+                                                                  (lamina/siphon sink ch))})]
+    (server)
+    (fn [] (connection/close-connection server))))
