@@ -1,5 +1,5 @@
 (ns flatland.laminate
-  (:require [flatland.useful.utils :refer [returning]]
+  (:require [flatland.useful.utils :refer [returning empty-coll?]]
             [lamina.time :as t]
             [lamina.core :as lamina :refer [channel enqueue receive-all enqueue-and-close]]
             [lamina.connections :as connection]
@@ -185,6 +185,14 @@
                                            (take n
                                                  (sort-by (comp f val)
                                                           m)))))))))
+
+(def-query-operator nonempty-vals
+  :periodic? false
+  :distribute? true
+  :transform (fn [{:keys [options]} ch]
+               (->> ch (lamina/map* (fn [m]
+                                      (into {}
+                                            (remove (comp empty-coll? val) m)))))))
 
 (defn persistent-stream
   "Given a way to connect a channel to a server, and a \"sink\" channel to read from, creates an
