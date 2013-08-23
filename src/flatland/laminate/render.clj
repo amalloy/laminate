@@ -2,7 +2,8 @@
   (:require lamina.query.struct
             [lamina.query :as query]
             [flatland.useful.map :refer [keyed]]
-            [flatland.laminate.time :as time]))
+            [flatland.laminate.time :as time])
+  (:import java.text.SimpleDateFormat))
 
 (defn parse-interval
   ([^String s]
@@ -15,7 +16,20 @@
        (parse-interval s)
        default)))
 
-(defn parse-render-opts [{:keys [target now timezone from until shift period align]}]
+(defn parse-time [s now]
+  (let [parser (java.text.SimpleDateFormat. "yyyy-MM-dd")]
+    (when (seq s)
+      (try
+        (.getTime (.parse parser s))
+        (catch Exception e
+          (try
+            (+ now (parse-interval s))
+            (catch Exception e
+              (Long/parseLong s))))))))
+
+(defn parse-render-opts [{:keys [target now timezone span from until shift period align]}]
+  (when (every? seq [span from])
+    (throw (IllegalArgumentException. "Can't specify both from and span")))
   (let [targets (if (coll? target)   ; if there's only one target it's a string, but if multiple are
                   target             ; specified then compojure will make a list of them
                   [target])
@@ -28,13 +42,16 @@
                               ("true" "end") [period 0]
                               ("start") [period period]
                               [(parse-interval align 1) 0])
-        [from until] (for [[timespec default] [[from (time/subtract-day now)]
-                                               [until now]]]
-                       (time/ms->s
-                        (-> (if (seq timespec)
-                              (+ now (parse-interval timespec))
-                              default)
-                            (time/align-to align timezone))))
+        until (if (seq until)
+                (parse-time until now)
+                now)
+        from (if (seq from)
+               (parse-time from now)
+               (- until (parse-interval (or (not-empty span)
+                                            "24h"))))
+        [from until] (for [t [from until]]
+                       (-> (time/ms->s t)
+                           (time/align-to align timezone)))
         offset (+ offset post-offset)]
     (keyed [targets offset from until period])))
 
