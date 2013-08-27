@@ -50,8 +50,9 @@
                (- until (parse-interval (or (not-empty span)
                                             "24h"))))
         [from until] (for [t [from until]]
-                       (-> (time/ms->s t)
-                           (time/align-to align timezone)))
+                       (-> t
+                           (time/align-to align timezone)
+                           (time/ms->s)))
         offset (+ offset post-offset)]
     (keyed [targets offset from until period])))
 
