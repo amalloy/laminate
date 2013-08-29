@@ -16,20 +16,27 @@
        (parse-interval s)
        default)))
 
-(defn parse-time [s now]
+(defn parse-time* [s now]
   (let [parser (java.text.SimpleDateFormat. "yyyy-MM-dd")]
     (when (seq s)
       (try
-        (.getTime (.parse parser s))
+        [:absolute (.getTime (.parse parser s))]
         (catch Exception e
           (try
-            (+ now (parse-interval s))
+            (let [interval (parse-interval s)]
+              (if (pos? interval)
+                [:relative interval]
+                [:absolute (+ now interval)]))
             (catch Exception e
-              (Long/parseLong s))))))))
+              [:absolute (Long/parseLong s)])))))))
 
-(defn parse-render-opts [{:keys [target now timezone span from until shift period align]}]
-  (when (every? seq [span from])
-    (throw (IllegalArgumentException. "Can't specify both from and span")))
+(defn parse-time [s now]
+  (let [[style n] (parse-time* s now)]
+    (if (= :absolute n)
+      n
+      (+ now n))))
+
+(defn parse-render-opts [{:keys [target now timezone from until shift period align]}]
   (let [targets (if (coll? target)   ; if there's only one target it's a string, but if multiple are
                   target             ; specified then compojure will make a list of them
                   [target])
@@ -42,13 +49,20 @@
                               ("true" "end") [period 0]
                               ("start") [period period]
                               [(parse-interval align 1) 0])
-        until (if (seq until)
-                (parse-time until now)
-                now)
-        from (if (seq from)
-               (parse-time from now)
-               (- until (parse-interval (or (not-empty span)
-                                            "24h"))))
+        [until-style until-value] (if (seq until)
+                                    (parse-time* until now)
+                                    [:absolute now])
+        [from-style from-value] (parse-time* (or (not-empty from)
+                                                "24h")
+                                             now)
+        [from until] (cond (every? #{:relative} [from-style until-style])
+                           ,,(throw (IllegalArgumentException.
+                                     "from and until can't both be relative"))
+                           (= :relative from-style)
+                           ,,[(- until-value from-value) until-value]
+                           (= :relative until-style)
+                           ,,[from-value (+ from-value until-value)]
+                           :else [from-value until-value])
         [from until] (for [t [from until]]
                        (-> t
                            (time/align-to align timezone)
