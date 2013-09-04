@@ -1,11 +1,12 @@
 (ns flatland.laminate
   (:require [flatland.useful.utils :refer [returning empty-coll?]]
+            [flatland.useful.seq :as useful]
             [lamina.time :as t]
             [lamina.core :as lamina :refer [channel enqueue receive-all enqueue-and-close]]
             [lamina.connections :as connection]
             [lamina.core.operators :as op]
             [lamina.query.operators :as q]
-            [lamina.query.core :refer [def-query-operator def-query-comparator query-comparator]]))
+            [lamina.query.core :refer [def-query-operator def-query-lookup def-query-comparator query-comparator]]))
 
 (defn within-window-op [trigger {:keys [id action window task-queue period]
                                  :or {id :id, action :action,
@@ -140,59 +141,38 @@
                                 (/ sum count))))
 
 (letfn [(mapper [f]
-          (fn [{:keys [options]} ch]
-            (let [arg (get options 0)]
-              (lamina/map* #(f arg %) ch))))]
-  (def-query-operator scale
-    :periodic? false
-    :distribute? true
-    :transform (mapper *))
-  (def-query-operator add
-    :periodic? false
-    :distribute? true
-    :transform (mapper +))
-  (def-query-operator format
-    :periodic? false
-    :distribute? true
-    :transform (mapper format)))
+          (fn [{:keys [options]}]
+            (partial f (get options 0))))]
+  (def-query-lookup scale (mapper *))
+  (def-query-lookup add (mapper +))
+  (def-query-lookup format (mapper format)))
 
-(def-query-operator map
-  :periodic? false
-  :distribute? true
-  :transform (fn [{:keys [options]} ch]
-               (let [f (q/getter (get options 0))]
-                 (lamina/map* (partial map f) ch))))
+(def-query-lookup map
+  (fn [{:keys [options]}]
+    (partial map (q/getter (get options 0)))))
 
-(def-query-operator meta
-  :periodic? false
-  :distribute? true
-  :transform (fn [options ch]
-               (lamina/map* meta ch)))
+(def-query-lookup meta
+  (constantly meta))
 
-(def-query-operator top
-  :periodic? false
-  :distribute? false
-  :transform (fn [{:keys [options] :as x} ch]
-               (let [n (or (get options 0)
-                           (throw (IllegalArgumentException.
-                                   "`top` operator needs numeric first argument")))
-                     f (if-let [operator (some options [:by 1])]
-                         (q/getter operator)
-                         identity)]
-                 (->> ch
-                      (lamina/map* (fn [m]
-                                     (into {}
-                                           (take n
-                                                 (sort-by (comp f val)
-                                                          m)))))))))
+(def-query-lookup top
+  (fn [{:keys [options]}]
+    (let [n (or (get options 0)
+                (throw (IllegalArgumentException.
+                        "`top` operator needs numeric first argument")))
+          f (if-let [operator (some options [:by 1])]
+              (q/getter operator)
+              identity)]
+      (fn [m]
+        (into {}
+              (take n
+                    (sort-by (comp f val)
+                             m)))))))
 
-(def-query-operator nonempty-vals
-  :periodic? false
-  :distribute? true
-  :transform (fn [{:keys [options]} ch]
-               (->> ch (lamina/map* (fn [m]
-                                      (into {}
-                                            (remove (comp empty-coll? val) m)))))))
+(def-query-lookup nonempty-vals
+  (fn [{:keys [options]}]
+    (fn [m]
+      (into {}
+            (remove (comp empty-coll? val) m)))))
 
 (defn dissoc-in [operators m]
   (let [{operator :name, options :options} (first operators)]
@@ -210,13 +190,21 @@
                     m))
                 m, keys)))))
 
-(def-query-operator dissoc
-  :periodic? false
-  :distribute? true
-  :transform (fn [{:keys [options]} ch]
-               (let [{{:keys [operators]} 0} options]
-                 (->> ch (lamina/map* (fn [x]
-                                        (dissoc-in operators x)))))))
+(def-query-lookup dissoc
+  (fn [{:keys [options]}]
+    (let [{{:keys [operators]} 0} options]
+      (fn [x]
+        (dissoc-in operators x)))))
+
+(def-query-lookup group-counts
+  (fn [{:keys [options]}]
+    (let [{facet 0, field 1} options
+          k (q/getter facet)
+          num (q/getter field)]
+      (fn [xs]
+        (useful/groupings k (fn [count item]
+                              (+ count (num item)))
+                          0, xs)))))
 
 (defn persistent-stream
   "Given a way to connect a channel to a server, and a \"sink\" channel to read from, creates an
