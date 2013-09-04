@@ -194,6 +194,30 @@
                                       (into {}
                                             (remove (comp empty-coll? val) m)))))))
 
+(defn dissoc-in [operators m]
+  (let [{operator :name, options :options} (first operators)]
+    (when (not= "lookup" operator)
+      (throw (IllegalArgumentException. (format "Don't know how to dissoc with operator %s"
+                                                operator))))
+    (let [keys ((juxt keyword name) (get options 0))]
+      (if (not (next operators))
+        (apply dissoc m keys)
+        (reduce (fn [m k]
+                  (if (contains? m k)
+                    (if-let [submap (not-empty (dissoc-in (rest operators) (get m k)))]
+                      (assoc m k submap)
+                      (dissoc m k))
+                    m))
+                m, keys)))))
+
+(def-query-operator dissoc
+  :periodic? false
+  :distribute? true
+  :transform (fn [{:keys [options]} ch]
+               (let [{{:keys [operators]} 0} options]
+                 (->> ch (lamina/map* (fn [x]
+                                        (dissoc-in operators x)))))))
+
 (defn persistent-stream
   "Given a way to connect a channel to a server, and a \"sink\" channel to read from, creates an
   automatically-reconnecting channel to the server, and siphons all messages from the sink to the
