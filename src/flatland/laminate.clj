@@ -140,21 +140,32 @@
                               (fn [{:keys [count sum]}]
                                 (/ sum count))))
 
+(defmacro def-lookup-operator
+  "Defines an operator and a lookup with the same name, to make lamina's parser happy."
+  [name transform]
+  `(let [f# ~transform]
+     (def-query-lookup ~name f#)
+     (def-query-operator ~name
+       :periodic? false
+       :distribute? true
+       :transform (fn ~(gensym name) [options# ch#]
+                    (->> ch# (lamina/map* (f# options#)))))))
+
 (letfn [(mapper [f]
           (fn [{:keys [options]}]
             (partial f (get options 0))))]
-  (def-query-lookup scale (mapper *))
-  (def-query-lookup add (mapper +))
-  (def-query-lookup format (mapper format)))
+  (def-lookup-operator scale (mapper *))
+  (def-lookup-operator add (mapper +))
+  (def-lookup-operator format (mapper format)))
 
-(def-query-lookup map
+(def-lookup-operator map
   (fn [{:keys [options]}]
     (partial map (q/getter (get options 0)))))
 
-(def-query-lookup meta
+(def-lookup-operator meta
   (constantly meta))
 
-(def-query-lookup top
+(def-lookup-operator top
   (fn [{:keys [options]}]
     (let [n (or (get options 0)
                 (throw (IllegalArgumentException.
@@ -168,7 +179,7 @@
                     (sort-by (comp f val)
                              m)))))))
 
-(def-query-lookup nonempty-vals
+(def-lookup-operator nonempty-vals
   (fn [{:keys [options]}]
     (fn [m]
       (into {}
@@ -190,13 +201,13 @@
                     m))
                 m, keys)))))
 
-(def-query-lookup dissoc
+(def-lookup-operator dissoc
   (fn [{:keys [options]}]
     (let [{{:keys [operators]} 0} options]
       (fn [x]
         (dissoc-in operators x)))))
 
-(def-query-lookup group-counts
+(def-lookup-operator group-counts
   (fn [{:keys [options]}]
     (let [{facet 0, field 1} options
           k (q/getter facet)
