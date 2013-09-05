@@ -185,7 +185,7 @@
       (into {}
             (remove (comp empty-coll? val) m)))))
 
-(defn dissoc-in [operators m]
+(defn dissoc-lookup [m operators]
   (let [{operator :name, options :options} (first operators)]
     (when (not= "lookup" operator)
       (throw (IllegalArgumentException. (format "Don't know how to dissoc with operator %s"
@@ -195,7 +195,7 @@
         (apply dissoc m keys)
         (reduce (fn [m k]
                   (if (contains? m k)
-                    (if-let [submap (not-empty (dissoc-in (rest operators) (get m k)))]
+                    (if-let [submap (not-empty (dissoc-lookup (rest operators) (get m k)))]
                       (assoc m k submap)
                       (dissoc m k))
                     m))
@@ -204,8 +204,7 @@
 (def-lookup-operator dissoc
   (fn [{:keys [options]}]
     (let [{{:keys [operators]} 0} options]
-      (fn [x]
-        (dissoc-in operators x)))))
+      (partial dissoc-lookup operators))))
 
 (def-lookup-operator group-counts
   (fn [{:keys [options]}]
