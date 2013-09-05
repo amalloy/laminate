@@ -31,7 +31,7 @@
               [:absolute (Long/parseLong s)])))))))
 
 (defn parse-time [s now]
-  (let [[style n] (parse-time* s now)]
+  (when-let [[style n] (parse-time* s now)]
     (if (= :absolute n)
       n
       (+ now n))))
