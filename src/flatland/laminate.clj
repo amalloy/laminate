@@ -185,7 +185,7 @@
       (into {}
             (remove (comp empty-coll? val) m)))))
 
-(defn dissoc-lookup [m operators]
+(defn dissoc-lookup [operators m]
   (let [{operator :name, options :options} (first operators)]
     (when (not= "lookup" operator)
       (throw (IllegalArgumentException. (format "Don't know how to dissoc with operator %s"
