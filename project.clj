@@ -1,4 +1,4 @@
-(defproject org.flatland/laminate "1.5.3"
+(defproject org.flatland/laminate "1.5.4"
   :description "A utility library for lamina applications, including some custom operators for the lamina query-streams language."
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.flatland/useful "0.10.3"]
