@@ -32,7 +32,7 @@
 
 (defn parse-time [s now]
   (when-let [[style n] (parse-time* s now)]
-    (if (= :absolute n)
+    (if (= :absolute style)
       n
       (+ now n))))
 
