@@ -188,8 +188,9 @@
 (defn dissoc-lookup [operators m]
   (let [{operator :name, options :options} (first operators)]
     (when (not= "lookup" operator)
-      (throw (IllegalArgumentException. (format "Don't know how to dissoc with operator %s"
-                                                operator))))
+      (throw (IllegalArgumentException. (format "Don't know how to dissoc with operator %s (%s)"
+                                                operator
+                                                (pr-str operators)))))
     (let [keys ((juxt keyword name) (get options 0))]
       (if (not (next operators))
         (apply dissoc m keys)
