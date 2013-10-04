@@ -217,6 +217,22 @@
                               (+ count (num item)))
                           0, xs)))))
 
+(def-lookup-operator nil?
+  (fn [{:keys [options]}]
+    nil?))
+
+(def-lookup-operator exists?
+  (fn [{:keys [options]}]
+    (complement nil?)))
+
+(def-lookup-operator boolean
+  (fn [{:keys [options]}]
+    boolean))
+
+(def-lookup-operator not
+  (fn [{:keys [options]}]
+    not))
+
 (defn persistent-stream
   "Given a way to connect a channel to a server, and a \"sink\" channel to read from, creates an
   automatically-reconnecting channel to the server, and siphons all messages from the sink to the
