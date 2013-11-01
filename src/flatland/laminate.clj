@@ -159,6 +159,10 @@
   (def-lookup-operator log (mapper #(/ (Math/log %2) (Math/log %))))
   (def-lookup-operator format (mapper format)))
 
+(def-lookup-operator first
+  (fn [{:keys [options]}]
+    first))
+
 (def-lookup-operator map
   (fn [{:keys [options]}]
     (partial map (q/getter (get options 0)))))
