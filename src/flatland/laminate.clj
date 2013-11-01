@@ -156,6 +156,7 @@
             (partial f (get options 0))))]
   (def-lookup-operator scale (mapper *))
   (def-lookup-operator add (mapper +))
+  (def-lookup-operator log (mapper #(/ (Math/log %2) (Math/log %))))
   (def-lookup-operator format (mapper format)))
 
 (def-lookup-operator map
